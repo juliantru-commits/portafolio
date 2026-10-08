@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tableros de una plataforma de aprendizaje · Ilustración con datos ficticios</title>
+<meta name="description" content="Ilustración con datos ficticios de cómo se organizaban los tableros de una plataforma de aprendizaje por segmento y programa.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a6173'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='30' font-weight='700' text-anchor='middle' fill='%23fff'%3EJT%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="demo-bar.css">
+<link rel="stylesheet" href="demo.css">
+<style>
+  .l1 { stroke: var(--d-accent); fill: none; } .l2 { stroke: var(--d-gold); fill: none; }
+  .l3 { stroke: var(--d-ok); fill: none; }      .l4 { stroke: var(--d-blue); fill: none; }
+  .l5 { stroke: var(--d-warn); fill: none; }
+  .c1 { fill: var(--d-accent); } .c2 { fill: var(--d-gold); } .c3 { fill: var(--d-ok); } .c4 { fill: var(--d-blue); } .c5 { fill: var(--d-warn); }
+  .pl-intro { margin: 0 0 16px; padding: 12px 14px; border-left: 3px solid var(--d-gold); background: var(--d-surface2); font-size: 15px; }
+  .pl-delta { font-size: 13px; color: var(--d-muted); display: block; margin-top: 4px; }
+  .pl-bar { height: 8px; background: var(--d-surface2); border: 1px solid var(--d-line); margin-top: 6px; }
+  .pl-bar i { display: block; height: 100%; background: var(--d-accent); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .dm-table td:last-child, .dm-table th:last-child { text-align: right; }
+</style>
+</head>
+<body>
+<header class="db"><div class="db-in">
+  <a class="db-back" href="../casos/plataforma-virtual.html">← Volver al caso</a>
+  <span class="db-tag">Datos ficticios · Ilustración conceptual</span>
+  <button class="db-theme" id="theme-btn" type="button" aria-label="Cambiar entre modo claro y oscuro">Oscuro</button>
+</div></header>
+
+<main class="dm">
+  <p class="dm-eyebrow">Business Intelligence · ilustración interactiva</p>
+  <h1>Tableros de una plataforma de aprendizaje</h1>
+  <p class="dm-lead">Un tablero por segmento y por programa, más uno consolidado y uno para la formación de los empleados. Cambia de vista para ver qué pregunta respondía cada uno.</p>
+  <p class="dm-note">Plataforma, empresas, cursos y cifras ficticios. Ilustra los tipos de pregunta que respondía cada tablero; no reproduce los tableros reales ni sus indicadores. Los totales se calculan a partir de las series de cada segmento, así que son consistentes entre vistas.</p>
+
+  <div class="dm-switch" id="tabs" role="group" aria-label="Tablero">
+    <button type="button" data-k="total" aria-pressed="true">Consolidado</button>
+    <button type="button" data-k="b2b" aria-pressed="false">Empresas (B2B)</button>
+    <button type="button" data-k="b2c" aria-pressed="false">Personas (B2C)</button>
+    <button type="button" data-k="emp" aria-pressed="false">Empleabilidad</button>
+    <button type="button" data-k="edu" aria-pressed="false">Educación complementaria</button>
+    <button type="button" data-k="staff" aria-pressed="false">Formación de empleados</button>
+    <button type="button" data-k="bot" aria-pressed="false">Asistente virtual</button>
+  </div>
+
+  <p class="pl-intro" id="intro" aria-live="polite"></p>
+  <section class="dm-kpis" id="kpis" aria-label="Indicadores"></section>
+
+  <section class="dm-grid">
+    <article class="dm-panel">
+      <h3 id="chartTitle"></h3><small id="chartSub"></small>
+      <div class="dm-chart" id="plot" role="img" aria-label="Gráfico de la vista seleccionada"></div>
+      <div class="dm-legend" id="legend"></div>
+    </article>
+    <aside class="dm-panel">
+      <h3 id="listTitle"></h3><small id="listSub"></small>
+      <div class="dm-table-wrap"><table class="dm-table"><tbody id="rows"></tbody></table></div>
+    </aside>
+  </section>
+</main>
+
+<script>
+const MES = ['oct', 'nov', 'dic', 'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep'];
+const W = [0, 18, -12, 25, -20, 30, -10, 22, -15, 12, -8, 0];            // ondulación fija
+/* Segmentos: usuarios activos al mes (serie de 12 meses), con sesiones por usuario. */
+const SEG = {
+  b2b: { n: 'Empresas (B2B)', start: 3150, end: 4820, k: 4.42, c: 1 },
+  b2c: { n: 'Personas (B2C, orgánico)', start: 2600, end: 3150, k: 4.10, c: 2 },
+  emp: { n: 'Empleabilidad', start: 80, end: 690, k: 4.78, c: 3 },
+  edu: { n: 'Educación complementaria', start: 120, end: 760, k: 5.40, c: 4 },
+  staff: { n: 'Empleados (beneficio)', start: 60, end: 380, k: 4.90, c: 5 },
+};
+Object.values(SEG).forEach(s => {
+  s.users = MES.map((_, i) => Math.round(s.start + (s.end - s.start) * i / 11 + W[i] * s.end / 4000));
+  s.sess = s.users.map(u => Math.round(u * s.k));
+});
+const sum = a => a.reduce((x, y) => x + y, 0);
+const TOT_USERS = MES.map((_, i) => sum(Object.values(SEG).map(s => s.users[i])));
+const TOT_SESS = MES.map((_, i) => sum(Object.values(SEG).map(s => s.sess[i])));
+const last = a => a[a.length - 1], prev = a => a[a.length - 2];
+const n0 = n => Math.round(n).toLocaleString('es-CO');
+const pc = (a, b) => (a / b * 100).toFixed(1).replace('.', ',') + '%';
+const dl = a => { const d = last(a) / prev(a) - 1; return (d >= 0 ? '▲ ' : '▼ ') + Math.abs(d * 100).toFixed(1).replace('.', ',') + '% frente al mes anterior'; };
+const kpi = (v, l, s) => `<div class="dm-kpi"><b>${v}</b><span>${l}</span>${s ? `<span class="pl-delta">${s}</span>` : ''}</div>`;
+
+const CURSOS = ['Excel intermedio', 'Liderazgo de equipos', 'Atención al cliente', 'Introducción a la analítica', 'Inglés para el trabajo'];
+const COMPL = ['Gestión del tiempo', 'Comunicación efectiva', 'Hoja de cálculo avanzada', 'Presentaciones con impacto', 'Pensamiento crítico'];
+const TEMAS = ['Cómo retomar un curso', 'Recomendación de contenido', 'Certificados', 'Problemas de acceso', 'Dudas del contenido'];
+function lista(titulo, items, pesos, total, resto, unidad) {
+  // las filas suman exactamente el total
+  const v = pesos.map(p => Math.round(total * p / 100));
+  const rest = total - sum(v);
+  return { t: titulo, rows: items.map((n, i) => [n, v[i]]).concat([[resto, rest]]), u: unidad };
+}
+const EMPRESAS = ['Grupo Alfa', 'Distribuidora Beta', 'Constructora Gama', 'Servicios Delta', 'Textiles Épsilon'];
+
+function chartLines(series) {
+  const w = 600, h = 250, p = 38;
+  const max = Math.max(...series.flatMap(s => s.v)) * 1.1, x = i => p + i * (w - p - 12) / 11, y = v => h - 28 - v / max * (h - 52);
+  let g = '';
+  [0, .5, 1].forEach(f => { const v = max / 1.1 * f; g += `<line class="s-grid" x1="${p}" x2="${w - 8}" y1="${y(v)}" y2="${y(v)}"/><text class="t-mute" x="2" y="${y(v) + 4}">${n0(v)}</text>`; });
+  MES.forEach((m, i) => { if (i % 2 === 0 || i === 11) g += `<text class="t-mute" x="${x(i)}" y="${h - 8}" text-anchor="middle">${m}</text>`; });
+  series.forEach(s => {
+    g += `<path class="l${s.c}" stroke-width="3" d="${s.v.map((v, i) => (i ? 'L' : 'M') + x(i) + ' ' + y(v)).join(' ')}"/>`;
+    g += `<circle class="c${s.c}" cx="${x(11)}" cy="${y(last(s.v))}" r="4.5"/>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}">${g}</svg>`;
+}
+function chartBars(items) {
+  const max = Math.max(...items.map(i => i[1])), x0 = 190, wmax = 300;
+  return `<svg viewBox="0 0 600 250">` + items.map((it, i) => {
+    const y = 20 + i * 62, w = it[1] / max * wmax;
+    return `<text class="t-text" x="2" y="${y + 17}">${it[0]}</text><rect class="c${it[2]}" x="${x0}" y="${y}" width="${w}" height="26"/><text class="t-text" x="${x0 + w + 8}" y="${y + 18}">${n0(it[1])}${it[3] ? ' · ' + it[3] : ''}</text>`;
+  }).join('') + '</svg>';
+}
+const leg = a => a.map(s => `<span><i class="c${s.c}" style="background:var(--d-${['', 'accent', 'gold', 'ok', 'blue', 'warn'][s.c]})"></i>${s.n}</span>`).join('');
+
+const VIEWS = {
+  total() {
+    const segs = Object.values(SEG);
+    return { intro: 'Un solo tablero reunía todos los públicos: la lectura de conjunto antes de entrar a cada segmento o programa.',
+      kpis: kpi(n0(last(TOT_USERS)), 'Usuarios activos del mes', dl(TOT_USERS)) + kpi(n0(last(TOT_SESS)), 'Sesiones de aprendizaje', dl(TOT_SESS)) +
+        kpi((last(TOT_SESS) / last(TOT_USERS)).toFixed(1).replace('.', ','), 'Sesiones por usuario') + kpi('780', 'Cursos distintos vistos'),
+      ct: 'Usuarios activos por segmento', cs: 'Últimos 12 meses', plot: chartLines(segs.map(s => ({ v: s.users, c: s.c, n: s.n }))), legend: leg(segs.map(s => ({ c: s.c, n: s.n }))),
+      lt: 'Participación por segmento', ls: 'Usuarios activos del mes',
+      rows: segs.map(s => [s.n, n0(last(s.users)), pc(last(s.users), last(TOT_USERS))]).concat([['Total', n0(last(TOT_USERS)), '100,0%']]) };
+  },
+  b2b() {
+    const s = SEG.b2b, u = last(s.users), top = [820, 690, 540, 455, 390], rest = u - sum(top);
+    return { intro: 'Métricas del segmento empresas: cuántas empresas, cuántos usuarios, qué usos y qué cursos.',
+      kpis: kpi('46', 'Empresas con usuarios activos') + kpi(n0(u), 'Usuarios activos del mes', dl(s.users)) + kpi(n0(last(s.sess)), 'Sesiones de aprendizaje', dl(s.sess)) + kpi(n0(u / 46), 'Usuarios activos por empresa'),
+      ct: 'Usuarios activos de empresas', cs: 'Últimos 12 meses', plot: chartLines([{ v: s.users, c: 1, n: s.n }]), legend: '',
+      lt: 'Empresas con más usuarios activos', ls: 'Las filas suman el total del segmento',
+      rows: EMPRESAS.map((e, i) => [e, n0(top[i]), pc(top[i], u)]).concat([['Otras 41 empresas', n0(rest), pc(rest, u)]]) };
+  },
+  b2c() {
+    const s = SEG.b2c, ses = last(s.sess), L = lista('', CURSOS, [22, 18, 17, 13, 10], ses, 'Otros cursos');
+    return { intro: 'Las mismas métricas para el segmento personas (orgánico): usuarios, usos y cursos.',
+      kpis: kpi(n0(last(s.users)), 'Usuarios activos del mes', dl(s.users)) + kpi(n0(ses), 'Sesiones de aprendizaje', dl(s.sess)) + kpi('4,1', 'Sesiones por usuario') + kpi('540', 'Cursos distintos vistos'),
+      ct: 'Usuarios activos de personas', cs: 'Últimos 12 meses', plot: chartLines([{ v: s.users, c: 2, n: s.n }]), legend: '',
+      lt: 'Cursos con más sesiones', ls: 'Las filas suman las sesiones del segmento', rows: L.rows.map(r => [r[0], n0(r[1]), pc(r[1], ses)]) };
+  },
+  emp() {
+    const s = SEG.emp, ses = last(s.sess), L = lista('', CURSOS, [26, 20, 15, 12, 9], ses, 'Otros cursos');
+    return { intro: 'Programa del área de empleo: cursos de la plataforma para personas en ruta de empleabilidad.',
+      kpis: kpi('1.800', 'Personas en ruta de empleabilidad') + kpi('1.150', 'Con acceso activado', pc(1150, 1800) + ' de la ruta') + kpi(n0(last(s.users)), 'Activas en el mes', pc(last(s.users), 1150) + ' de las activadas') + kpi(n0(ses), 'Sesiones de aprendizaje', dl(s.sess)),
+      ct: 'Del acceso al uso', cs: 'Personas en cada etapa', plot: chartBars([['En la ruta', 1800, 3], ['Acceso activado', 1150, 3, pc(1150, 1800)], ['Activas en el mes', last(s.users), 3, pc(last(s.users), 1150)]]), legend: '',
+      lt: 'Cursos con más sesiones', ls: 'Las filas suman las sesiones del programa', rows: L.rows.map(r => [r[0], n0(r[1]), pc(r[1], ses)]) };
+  },
+  edu() {
+    const s = SEG.edu, ses = last(s.sess), L = lista('', COMPL, [24, 21, 17, 12, 9], ses, 'Otros cursos');
+    return { intro: 'Estrategia para quienes compraban un curso: tenían derecho a ver otros que complementaban lo adquirido.',
+      kpis: kpi('2.400', 'Personas con derecho al beneficio') + kpi('1.010', 'Beneficio activado', pc(1010, 2400) + ' de quienes tenían derecho') + kpi(n0(last(s.users)), 'Activas en el mes', pc(last(s.users), 1010) + ' de las activadas') + kpi(n0(ses), 'Sesiones de aprendizaje', dl(s.sess)),
+      ct: 'Del derecho al uso', cs: 'Personas en cada etapa', plot: chartBars([['Con derecho al beneficio', 2400, 4], ['Beneficio activado', 1010, 4, pc(1010, 2400)], ['Activas en el mes', last(s.users), 4, pc(last(s.users), 1010)]]), legend: '',
+      lt: 'Cursos complementarios más vistos', ls: 'Las filas suman las sesiones del programa', rows: L.rows.map(r => [r[0], n0(r[1]), pc(r[1], ses)]) };
+  },
+  staff() {
+    const s = SEG.staff, part = 3480, L = lista('', ['Seguridad y salud en el trabajo', 'Protección de datos personales', 'Prevención del acoso laboral', 'Código de conducta', 'Primeros auxilios'], [22, 18, 15, 12, 9], part, 'Otros cursos');
+    return { intro: 'La plataforma de formación de los empleados: cursos de ley y organizacionales, con acceso a los cursos de la plataforma de aprendizaje como beneficio.',
+      kpis: kpi('3.200', 'Empleados con acceso') + kpi('1.450', 'Activos en el mes', pc(1450, 3200) + ' de quienes tienen acceso') + kpi(n0(part), 'Participaciones en cursos del mes') + kpi(n0(last(s.users)), 'Usaron cursos del catálogo como beneficio', pc(last(s.users), 1450) + ' de los activos'),
+      ct: 'Personas por tipo de curso', cs: 'Una persona puede participar en más de un tipo', plot: chartBars([['Cursos de ley', 1120, 1], ['Cursos organizacionales', 740, 2], ['Catálogo como beneficio', last(s.users), 5]]), legend: '',
+      lt: 'Cursos con más participaciones', ls: 'Las filas suman las participaciones del mes', rows: L.rows.map(r => [r[0], n0(r[1]), pc(r[1], part)]) };
+  },
+  bot() {
+    const conv = MES.map((_, i) => Math.round(900 + (5900 - 900) * i / 11 + W[i] * 1.2)), c = last(conv), L = lista('', TEMAS, [27, 22, 14, 11, 9], c, 'Otros temas');
+    return { intro: 'Un asistente virtual dentro de la plataforma: también se medía su uso.',
+      kpis: kpi('1.640', 'Usuarios que usaron el asistente', pc(1640, last(TOT_USERS)) + ' de los usuarios activos') + kpi(n0(c), 'Conversaciones', dl(conv)) + kpi((c / 1640).toFixed(1).replace('.', ','), 'Conversaciones por usuario') + kpi('5', 'Temas principales'),
+      ct: 'Conversaciones con el asistente', cs: 'Últimos 12 meses', plot: chartLines([{ v: conv, c: 1, n: 'Conversaciones' }]), legend: '',
+      lt: 'Temas más consultados', ls: 'Las filas suman las conversaciones del mes', rows: L.rows.map(r => [r[0], n0(r[1]), pc(r[1], c)]) };
+  },
+};
+const $ = id => document.getElementById(id);
+function render(k) {
+  const v = VIEWS[k]();
+  $('intro').textContent = v.intro; $('kpis').innerHTML = v.kpis; $('chartTitle').textContent = v.ct; $('chartSub').textContent = v.cs;
+  $('plot').innerHTML = v.plot; $('legend').innerHTML = v.legend; $('listTitle').textContent = v.lt; $('listSub').textContent = v.ls;
+  $('rows').innerHTML = v.rows.map(r => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td>${r[2] ? `<td class="num">${r[2]}</td>` : ''}</tr>`).join('');
+}
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true'); render(b.dataset.k);
+}));
+render('total');
+</script>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>

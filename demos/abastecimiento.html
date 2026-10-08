@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Abastecimiento accionable · Demo con datos ficticios</title>
+<meta name="description" content="Demo interactiva con datos ficticios: qué referencia necesita una acción hoy, incluso si hay mercancía en pedido.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a6173'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='30' font-weight='700' text-anchor='middle' fill='%23fff'%3EJT%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="demo-bar.css">
+<link rel="stylesheet" href="demo.css">
+<style>
+  .ab-item { grid-template-columns: 1.5fr .6fr .7fr auto; }
+  .ab-eq { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--d-line); border: 1px solid var(--d-line); margin: 20px 0; }
+  .ab-eq div { background: var(--d-surface); padding: 12px 8px; text-align: center; }
+  .ab-eq b { display: block; font: 600 24px/1 var(--d-font-display); color: var(--d-accent); }
+  .ab-eq span { font-size: 12px; color: var(--d-muted); }
+  .ab-line { position: relative; height: 74px; margin: 28px 8px 8px; }
+  .ab-line::before { content: ""; position: absolute; left: 0; right: 0; top: 22px; height: 4px; background: var(--d-line); }
+  .ab-pt { position: absolute; top: 14px; transform: translateX(-50%); text-align: center; font-size: 12px; color: var(--d-muted); width: 92px; }
+  .ab-pt i { display: block; width: 20px; height: 20px; margin: 0 auto 6px; border-radius: 50%; border: 3px solid var(--d-surface); }
+  .ab-pt.stock i { background: var(--d-err); }
+  .ab-pt.arr i { background: var(--d-gold); }
+  .ab-pt.now i { background: var(--d-accent); }
+  .ab-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--d-muted); margin: 0 8px; }
+  .detail-title { font: 600 28px/1.15 var(--d-font-display); margin: 8px 0 2px; }
+  @media (max-width: 760px) { .ab-item { grid-template-columns: 1fr auto; } .ab-item .hide-m { display: none; } .ab-eq { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<header class="db"><div class="db-in">
+  <a class="db-back" href="../casos/ecosistema-analitico.html">← Volver al caso</a>
+  <span class="db-tag">Datos ficticios · Demo recreada</span>
+  <button class="db-theme" id="theme-btn" type="button" aria-label="Cambiar entre modo claro y oscuro">Oscuro</button>
+</div></header>
+
+<main class="dm">
+  <p class="dm-eyebrow">Inteligencia operativa · demo interactiva</p>
+  <h1>Abastecimiento accionable</h1>
+  <p class="dm-lead">¿Qué referencia necesita una acción hoy, incluso si ya existe mercancía en pedido?</p>
+  <p class="dm-note">Referencias y cifras ficticias. El producto separa la disponibilidad presente, el pedido abierto y la cobertura: un pedido futuro no oculta un riesgo actual. Fecha de la demo: 8 de octubre de 2026. Cobertura objetivo: 4 meses.</p>
+
+  <section class="dm-kpis" id="summary" aria-label="Resumen de la muestra"></section>
+
+  <section class="dm-grid">
+    <article class="dm-panel" style="padding:0">
+      <div style="padding:20px 20px 12px"><p class="dm-eyebrow" style="margin-bottom:6px">Decisiones priorizadas</p><h3>Referencias que requieren lectura</h3></div>
+      <div class="dm-switch" id="filters" role="group" aria-label="Filtro" style="margin:0 20px 12px">
+        <button type="button" data-k="all" aria-pressed="true">Todas</button>
+        <button type="button" data-k="urgent" aria-pressed="false">Atención inmediata</button>
+        <button type="button" data-k="plan" aria-pressed="false">Planificar</button>
+        <button type="button" data-k="review" aria-pressed="false">Revisar compras</button>
+        <button type="button" data-k="ok" aria-pressed="false">Cubiertas</button>
+      </div>
+      <div id="rows" class="dm-list"></div>
+    </article>
+    <aside class="dm-panel" aria-live="polite">
+      <p class="dm-eyebrow">Diagnóstico por referencia</p>
+      <h2 class="detail-title" id="title"></h2>
+      <p id="code" style="margin:0;color:var(--d-muted)"></p>
+      <div class="ab-eq">
+        <div><b id="stock"></b><span>Disponible hoy</span></div>
+        <div><b id="order"></b><span>Pedido abierto</span></div>
+        <div><b id="cover"></b><span>Meses de cobertura hoy</span></div>
+        <div><b id="coverOrd"></b><span>Meses con el pedido</span></div>
+      </div>
+      <div class="dm-reason" id="why"></div>
+      <div class="ab-line" id="line" aria-label="Línea de tiempo a 60 días"></div>
+      <div class="ab-axis"><span>Hoy</span><span>30 días</span><span>60 días</span></div>
+      <div class="dm-action" id="action"></div>
+    </aside>
+  </section>
+</main>
+
+<script>
+/* Todos los campos derivados se calculan a partir de: disponible, pedido, demanda mensual y llegada.
+   Reglas (cobertura objetivo = 4 meses):
+   - Atención inmediata: se agota antes de que llegue el pedido (o no hay pedido y alcanza menos de 1 mes).
+   - Revisar compras: con el pedido supera 9 meses de cobertura.
+   - Planificar: con el pedido queda por debajo del objetivo.
+   - Cubierta: el resto. */
+const HOY = new Date(2026, 9, 8), OBJ = 4;
+const R = [
+  { code: 'REF-428R', title: 'Cadena 428 reforzada', rot: 'Rotación alta', stock: 0, order: 480, dem: 160, arr: 10 },
+  { code: 'REF-KA428', title: 'Kit de arrastre 428H', rot: 'Rotación alta', stock: 35, order: 0, dem: 140, arr: null },
+  { code: 'REF-BUJI', title: 'Bujía de iridio', rot: 'Rotación media', stock: 90, order: 300, dem: 120, arr: 5 },
+  { code: 'REF-PCX', title: 'Pastillas cerámicas X', rot: 'Rotación media', stock: 126, order: 260, dem: 115, arr: 16 },
+  { code: 'REF-FAU', title: 'Filtro de aire urbano', rot: 'Rotación media', stock: 410, order: 200, dem: 180, arr: 20 },
+  { code: 'REF-ACE20', title: 'Aceite 20W50 1 L', rot: 'Rotación alta', stock: 1200, order: 0, dem: 400, arr: null },
+  { code: 'REF-KLED', title: 'Kit de iluminación LED', rot: 'Demanda estable', stock: 780, order: 920, dem: 107, arr: 1 },
+  { code: 'REF-CUB', title: 'Cubierta 90/90-18', rot: 'Demanda estable', stock: 640, order: 400, dem: 70, arr: 25 },
+  { code: 'REF-RET', title: 'Retrovisor universal', rot: 'Demanda estable', stock: 300, order: 0, dem: 60, arr: null },
+  { code: 'REF-MAN', title: 'Manigueta de freno', rot: 'Demanda estable', stock: 220, order: 0, dem: 40, arr: null }
+];
+const f1 = n => n.toFixed(1).replace('.', ',');
+const fecha = d => new Date(HOY.getTime() + d * 864e5).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+R.forEach(r => {
+  r.cover = r.stock / r.dem;                       // meses
+  r.coverOrd = (r.stock + r.order) / r.dem;
+  r.stockoutDay = r.stock === 0 ? 0 : Math.round(r.cover * 30);
+  const antes = r.order > 0 ? r.stockoutDay < r.arr : r.cover < 1;
+  r.k = antes ? 'urgent' : (r.coverOrd > 9 ? 'review' : (r.coverOrd < OBJ ? 'plan' : 'ok'));
+});
+const TAG = { urgent: ['Atención', 'p-hi'], plan: ['Planificar', 'p-mid'], review: ['Revisar', 'p-ok'], ok: ['Cubierta', 'p-ok'] };
+function why(r) {
+  if (r.k === 'urgent') {
+    if (r.order > 0) return `${r.stock === 0 ? 'Está agotada hoy' : 'Se agota el ' + fecha(r.stockoutDay) + ' (en ' + r.stockoutDay + ' días)'}. El pedido llega el ${fecha(r.arr)}, ${r.arr - r.stockoutDay} días después: no mitiga la urgencia actual.`;
+    return `Se agota el ${fecha(r.stockoutDay)} (en ${r.stockoutDay} días) y no hay pedido abierto: la cobertura actual es menor a un mes.`;
+  }
+  if (r.k === 'plan') return `La cobertura actual es de ${f1(r.cover)} meses${r.order ? ' y el pedido llega a tiempo (' + fecha(r.arr) + ')' : ' y no hay pedido abierto'}, pero con todo queda en ${f1(r.coverOrd)} meses, por debajo del objetivo de ${OBJ}.`;
+  if (r.k === 'review') return `La cobertura actual es suficiente (${f1(r.cover)} meses) y con el pedido llega a ${f1(r.coverOrd)}. La decisión es revisar la compra, no reponer.`;
+  return `Cobertura de ${f1(r.coverOrd)} meses, por encima del objetivo de ${OBJ}. No requiere acción.`;
+}
+function act(r) {
+  return { urgent: r.order ? 'Gestionar reposición inmediata y confirmar la fecha real del pedido abierto.' : 'Generar un pedido de reposición y evaluar un abastecimiento alterno.',
+    plan: r.order ? 'Completar la reposición para alcanzar el objetivo y monitorear el cumplimiento de la llegada.' : 'Programar un pedido para alcanzar la cobertura objetivo.',
+    review: 'Revisar la cantidad abierta antes de comprometer inventario adicional.', ok: 'Mantener el seguimiento rutinario.' }[r.k];
+}
+const $ = id => document.getElementById(id);
+let current = R[0], filter = 'all';
+function summary() {
+  const c = k => R.filter(r => r.k === k).length;
+  $('summary').innerHTML = [['urgent', 'Atención inmediata'], ['plan', 'Planificar reposición'], ['review', 'Revisar compras'], ['ok', 'Referencias cubiertas']]
+    .map(s => `<div class="dm-kpi"><b>${c(s[0])}</b><span>${s[1]}</span></div>`).join('');
+}
+function detail(r) {
+  current = r;
+  $('title').textContent = r.title; $('code').textContent = r.code + ' · ' + r.rot + ' · demanda de ' + r.dem + ' unidades al mes';
+  $('stock').textContent = r.stock; $('order').textContent = r.order; $('cover').textContent = f1(r.cover); $('coverOrd').textContent = f1(r.coverOrd);
+  $('why').textContent = why(r); $('action').textContent = act(r);
+  const pos = d => Math.min(Math.max(d / 60 * 100, 2), 96);
+  let pts = `<span class="ab-pt now" style="left:${pos(0)}%"><i></i>Hoy</span>`;
+  if (r.stockoutDay <= 60 && r.stock > 0) pts += `<span class="ab-pt stock" style="left:${pos(r.stockoutDay)}%"><i></i>Quiebre ${fecha(r.stockoutDay)}</span>`;
+  if (r.stock === 0) pts = `<span class="ab-pt stock" style="left:${pos(0)}%"><i></i>Agotada hoy</span>`;
+  if (r.arr != null && r.arr <= 60) pts += `<span class="ab-pt arr" style="left:${pos(r.arr)}%"><i></i>Llega ${fecha(r.arr)}</span>`;
+  if (r.stockoutDay > 60 && r.stock > 0) pts += `<span class="ab-pt" style="left:80%;top:14px"><i style="background:var(--d-ok)"></i>Sin quiebre en 60 días</span>`;
+  $('line').innerHTML = pts;
+  document.querySelectorAll('.ab-item').forEach(e => e.setAttribute('aria-pressed', e.dataset.code === r.code));
+}
+function list() {
+  const a = filter === 'all' ? R : R.filter(r => r.k === filter);
+  $('rows').innerHTML = a.map(r => `<button type="button" class="dm-item ab-item" data-code="${r.code}" aria-pressed="false"><div><b>${r.title}</b><small>${r.code} · ${r.rot}</small></div><small class="hide-m">${r.stock} disp.</small><small class="hide-m">${r.order} en pedido</small><span class="dm-pill ${TAG[r.k][1]}">${TAG[r.k][0]}</span></button>`).join('');
+  document.querySelectorAll('.ab-item').forEach(e => e.addEventListener('click', () => detail(R.find(r => r.code === e.dataset.code))));
+  detail(a.includes(current) ? current : a[0]);
+}
+document.querySelectorAll('#filters button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#filters button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true'); filter = b.dataset.k; list();
+}));
+summary(); list();
+</script>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>

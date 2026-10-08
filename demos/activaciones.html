@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Motor de activaciones · Demo con datos ficticios</title>
+<meta name="description" content="Demo interactiva con datos ficticios: dónde hay una oportunidad ejecutable, con inventario y rentabilidad suficientes.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a6173'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='30' font-weight='700' text-anchor='middle' fill='%23fff'%3EJT%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="demo-bar.css">
+<link rel="stylesheet" href="demo.css">
+<style>
+  .ac-steps { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--d-line); margin: 24px 0; background: var(--d-surface); }
+  .ac-step { padding: 14px; font-size: 13px; color: var(--d-muted); border-right: 1px solid var(--d-line); }
+  .ac-step:last-child { border-right: 0; }
+  .ac-step b { display: block; color: var(--d-text); font-size: 15px; margin-top: 4px; }
+  .ac-step.on { background: var(--d-surface2); }
+  .ac-step.on span { color: var(--d-accent); font-weight: 700; }
+  .ac-item { grid-template-columns: 1fr auto; padding: 16px 20px; }
+  .ac-score { font: 600 30px/1 var(--d-font-display); color: var(--d-accent); text-align: right; }
+  .ac-score small { display: block; font: 12px var(--d-font-body); }
+  .ac-metrics { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--d-line); border-bottom: 1px solid var(--d-line); margin: 20px 0; }
+  .ac-metrics div { padding: 12px 8px; }
+  .ac-metrics div + div { border-left: 1px solid var(--d-line); }
+  .ac-metrics b { display: block; font: 600 24px/1 var(--d-font-display); color: var(--d-accent); }
+  .ac-metrics span { font-size: 12px; color: var(--d-muted); }
+  .ac-factor { display: grid; grid-template-columns: 150px 1fr 70px; gap: 10px; align-items: center; margin: 10px 0; font-size: 14px; }
+  .ac-track { height: 10px; background: var(--d-surface2); border: 1px solid var(--d-line); }
+  .ac-fill { height: 100%; background: var(--d-accent); }
+  .ac-factor b { text-align: right; font-weight: 600; }
+  @media (max-width: 760px) { .ac-steps { grid-template-columns: 1fr; } .ac-step { border-right: 0; border-bottom: 1px solid var(--d-line); } .ac-factor { grid-template-columns: 110px 1fr 56px; } }
+</style>
+</head>
+<body>
+<header class="db"><div class="db-in">
+  <a class="db-back" href="../casos/ecosistema-analitico.html">← Volver al caso</a>
+  <span class="db-tag">Datos ficticios · Demo recreada</span>
+  <button class="db-theme" id="theme-btn" type="button" aria-label="Cambiar entre modo claro y oscuro">Oscuro</button>
+</div></header>
+
+<main class="dm">
+  <p class="dm-eyebrow">Sistema estratégico · demo interactiva</p>
+  <h1>Motor de activaciones comerciales</h1>
+  <p class="dm-lead">¿Dónde hay una oportunidad ejecutable, con inventario y rentabilidad suficientes para actuar?</p>
+  <p class="dm-note">Marcas, inventario y cifras ficticias. Demuestra el diseño de una decisión auditable: el puntaje es el promedio de cuatro factores con el mismo peso y se recalcula al cambiar cualquier factor.</p>
+
+  <ol class="ac-steps" style="list-style:none;padding:0">
+    <li class="ac-step"><span>01</span><b>Diagnosticar</b>Señales comerciales</li>
+    <li class="ac-step on" aria-current="step"><span>02</span><b>Proponer</b>Oportunidad priorizada</li>
+    <li class="ac-step"><span>03</span><b>Aprobar</b>Decisión trazable</li>
+    <li class="ac-step"><span>04</span><b>Distribuir</b>Universo congelado</li>
+    <li class="ac-step"><span>05</span><b>Seguir</b>Resultado incremental</li>
+  </ol>
+
+  <section class="dm-grid">
+    <article class="dm-panel" style="padding:0">
+      <div style="padding:20px"><p class="dm-eyebrow" style="margin-bottom:6px">Marca ficticia · tercer trimestre</p><h3>Propuestas de activación</h3></div>
+      <div id="options" class="dm-list"></div>
+    </article>
+    <aside class="dm-panel" aria-live="polite">
+      <p class="dm-eyebrow">Propuesta recomendada</p>
+      <h2 id="title" style="font-size:28px;line-height:1.15;margin-top:6px"></h2>
+      <div class="ac-metrics">
+        <div><b id="inv"></b><span>Inventario activable</span></div>
+        <div><b id="clients"></b><span>Clientes recuperables</span></div>
+        <div><b id="margin"></b><span>Margen actual</span></div>
+      </div>
+      <div class="dm-reason" id="reason"></div>
+      <p class="dm-eyebrow" style="margin:24px 0 8px">Aportes a la decisión (25 % cada factor)</p>
+      <div id="factors"></div>
+      <div class="dm-action" id="action"></div>
+      <p style="font-size:13px;color:var(--d-muted);margin:14px 0 0">El ranking es una ayuda de decisión versionada. La aprobación, el universo de clientes y el seguimiento son etapas separadas.</p>
+    </aside>
+  </section>
+</main>
+
+<script>
+const FACT = ['Sobrestock', 'Unidades a activar', 'Clientes recuperables', 'Caída de ventas'];
+const P = [
+  { title: 'Transmisión urbana', sub: 'Sobrestock, recuperación de clientes y caída de ventas convergen.', f: [84, 76, 91, 65], inv: '$96 M', clients: '178', margin: '31,4%',
+    reason: 'Caída comercial relevante, inventario disponible y una base recuperable suficiente para una activación focalizada.', action: 'Proponer una activación de 21 días para tres subgrupos, con validación de margen antes de la aprobación.' },
+  { title: 'Frenos premium', sub: 'Oportunidad moderada con buena capacidad de inventario.', f: [71, 68, 75, 54], inv: '$74 M', clients: '122', margin: '28,9%',
+    reason: 'Inventario activable y clientes elegibles; la caída comercial es moderada y requiere una oferta más selectiva.', action: 'Validar la propuesta de valor y reservar inventario antes de distribuir una lista de clientes.' },
+  { title: 'Iluminación LED', sub: 'Demanda por validar antes de asignar esfuerzo comercial.', f: [58, 79, 44, 51], inv: '$58 M', clients: '96', margin: '25,6%',
+    reason: 'Existe oportunidad, pero la capacidad de recuperación aún es baja frente a los otros grupos.', action: 'Mantener en observación; no distribuir hasta validar la demanda y la condición de margen.' }
+];
+const score = p => p.f.reduce((a, b) => a + b, 0) / p.f.length / 100;
+const fs = n => n.toFixed(2).replace('.', ',');
+P.sort((a, b) => score(b) - score(a));
+const $ = id => document.getElementById(id);
+let cur = 0;
+const COL = ['var(--d-accent)', 'var(--d-blue)', 'var(--d-ok)', 'var(--d-gold)'];
+function show(i) {
+  cur = i; const p = P[i];
+  $('title').textContent = p.title; $('inv').textContent = p.inv; $('clients').textContent = p.clients; $('margin').textContent = p.margin;
+  $('reason').textContent = p.reason; $('action').textContent = p.action;
+  $('factors').innerHTML = p.f.map((v, k) => `<div class="ac-factor"><span>${FACT[k]}</span><div class="ac-track"><div class="ac-fill" style="width:${v}%;background:${COL[k]}"></div></div><b>${v} / 100</b></div>`).join('') +
+    `<div class="ac-factor" style="border-top:1px solid var(--d-line);padding-top:10px"><span><b>Puntaje</b></span><span style="color:var(--d-muted);font-size:13px">promedio de los cuatro factores</span><b>${fs(score(p))}</b></div>`;
+  document.querySelectorAll('.ac-item').forEach((e, k) => e.setAttribute('aria-pressed', k === i));
+}
+$('options').innerHTML = P.map((p, i) => `<button type="button" class="dm-item ac-item" aria-pressed="false" data-i="${i}"><div><b style="font-size:17px">${p.title}</b><small>${p.sub}</small></div><div class="ac-score">${fs(score(p))}<small>puntaje</small></div></button>`).join('');
+document.querySelectorAll('.ac-item').forEach(e => e.addEventListener('click', () => show(+e.dataset.i)));
+show(0);
+</script>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control financiero · Demo con datos ficticios</title>
+<meta name="description" content="Demo interactiva con datos ficticios: qué diferencias de conciliación requieren intervención y dónde está la causa.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a6173'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='30' font-weight='700' text-anchor='middle' fill='%23fff'%3EJT%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="demo-bar.css">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+<header class="db"><div class="db-in">
+  <a class="db-back" href="../casos/conciliacion-bancaria.html">← Volver al caso</a>
+  <span class="db-tag">Datos ficticios · Demo recreada</span>
+  <button class="db-theme" id="theme-btn" type="button" aria-label="Cambiar entre modo claro y oscuro">Oscuro</button>
+</div></header>
+
+<main class="dm">
+  <p class="dm-eyebrow">Control financiero y automatización · demo interactiva</p>
+  <h1>Conciliación que termina en una decisión</h1>
+  <p class="dm-lead">¿Qué diferencias requieren intervención, cuánto dinero está comprometido y dónde está la causa?</p>
+  <p class="dm-note">Compañía, cuentas, contrapartes y cifras ficticias. Es una vista de seguimiento de excepciones, no la herramienta de conciliación en sí.</p>
+
+  <div class="dm-switch" id="views" role="group" aria-label="Vista">
+    <button type="button" data-k="hoy" aria-pressed="true">Cierre de hoy</button>
+    <button type="button" data-k="week" aria-pressed="false">Acumulado semanal</button>
+    <button type="button" data-k="cause" aria-pressed="false">Causa de la diferencia</button>
+  </div>
+
+  <section class="dm-answer" aria-live="polite">
+    <div><p class="dm-eyebrow">Lectura ejecutiva</p><h2 id="answerTitle"></h2><p id="answerText"></p></div>
+    <div><span class="dm-big" id="amount"></span><span class="dm-big-label" id="amountLabel"></span></div>
+  </section>
+
+  <section class="dm-kpis" aria-label="Indicadores">
+    <div class="dm-kpi"><b id="matched"></b><span>Movimientos conciliados</span></div>
+    <div class="dm-kpi"><b id="pending"></b><span>Excepciones abiertas</span></div>
+    <div class="dm-kpi"><b id="aging"></b><span>Vencidas hace más de 48 h</span></div>
+    <div class="dm-kpi"><b id="auto"></b><span>Aplicación automática</span></div>
+  </section>
+
+  <section class="dm-grid">
+    <article class="dm-panel">
+      <h3 id="chartTitle"></h3><small id="chartSub"></small>
+      <div class="dm-chart" id="chart" role="img" aria-label="Gráfico de la vista seleccionada"></div>
+      <div class="dm-legend" id="legend"></div>
+    </article>
+    <aside class="dm-panel">
+      <h3>Excepciones priorizadas</h3><small>Ordenadas por impacto y vencimiento</small>
+      <div id="exceptions"></div>
+    </aside>
+  </section>
+
+  <section class="dm-panel" style="margin-top:16px">
+    <h3>Detalle de seguimiento</h3>
+    <div class="dm-table-wrap"><table class="dm-table"><thead><tr><th>Referencia</th><th>Origen</th><th>Estado</th><th>Antigüedad</th><th>Valor</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+</main>
+
+<script>
+/* Cifras en millones de COP. Consistencia:
+   - hoy: 7 excepciones por $18,6M; las dos mayores (12,4 + 2,7) son el 81 %.
+   - semana: de 55 a 34,2 es -38 %.
+   - causa: 11,9 / 18,6 = 64 %; las barras suman 18,6. */
+const D = {
+  hoy: { answerTitle: 'Hay 7 diferencias que deben resolverse antes del cierre.',
+    answerText: 'El 81 % del valor pendiente se concentra en dos movimientos sin aplicar. La prioridad es verificar la referencia y la fecha valor antes de escalar un ajuste contable.',
+    amount: '$18,6 M', amountLabel: 'Valor pendiente de conciliación', matched: '96,8%', pending: '7', aging: '2', auto: '84%',
+    chartTitle: 'Pendiente por día de operación', chartSub: 'Valor no conciliado al cierre · millones COP',
+    kind: 'line', labels: ['L', 'M', 'X', 'J', 'V', 'S', 'D'], vals: [8, 13, 9, 21, 17, 12, 18.6], threshold: 12, legend: ['pendiente', 'umbral operativo (12)'],
+    exceptions: [['TRX-08421', 'Pago recibido sin referencia', 'Alta', '12,4 M', 'p-hi'], ['TRX-08436', 'Fecha valor diferente', 'Alta', '2,7 M', 'p-hi'], ['TRX-08429', 'Comisión no registrada', 'Media', '1,9 M', 'p-mid']],
+    rows: [['TRX-08421', 'Extracto', 'Pendiente', '3 días', '$12,4 M', 'risk'], ['TRX-08436', 'ERP', 'En revisión', '2 días', '$2,7 M', 'risk'], ['TRX-08429', 'Extracto', 'Pendiente', '1 día', '$1,9 M', 'risk'], ['TRX-08433', 'ERP', 'Conciliado', 'Hoy', '$0,0 M', 'good']] },
+  week: { answerTitle: 'El pendiente semanal bajó 38 %, pero aún hay dos diferencias vencidas.',
+    answerText: 'La automatización resolvió la mayoría de los movimientos repetitivos. Las excepciones que quedan requieren trazabilidad documental, no más reglas automáticas.',
+    amount: '$34,2 M', amountLabel: 'Pendiente acumulado de la semana', matched: '97,4%', pending: '11', aging: '2', auto: '87%',
+    chartTitle: 'Pendiente acumulado por fecha de corte', chartSub: 'Saldo de excepciones abiertas · millones COP',
+    kind: 'area', labels: ['L', 'M', 'X', 'J', 'V', 'S', 'D'], vals: [55, 49, 43, 46, 39, 37, 34.2], threshold: 40, legend: ['saldo abierto', 'umbral operativo (40)'],
+    exceptions: [['TRX-08396', 'Soporte de recaudo pendiente', 'Alta', '14,1 M', 'p-hi'], ['TRX-08402', 'Diferencia de fecha valor', 'Media', '6,8 M', 'p-mid'], ['TRX-08421', 'Pago sin referencia', 'Media', '5,2 M', 'p-mid']],
+    rows: [['TRX-08396', 'Extracto', 'Vencido', '5 días', '$14,1 M', 'risk'], ['TRX-08402', 'ERP', 'En revisión', '4 días', '$6,8 M', 'risk'], ['TRX-08421', 'Extracto', 'Pendiente', '3 días', '$5,2 M', 'risk'], ['TRX-08408', 'ERP', 'Conciliado', '2 días', '$0,0 M', 'good']] },
+  cause: { answerTitle: 'La principal causa no es contable: faltan referencias de recaudo.',
+    answerText: 'El 64 % del valor abierto se explica por identificadores ausentes o incompletos. La acción es corregir el dato de origen y establecer un control de captura.',
+    amount: '64%', amountLabel: 'Del pendiente explicado por referencia', matched: '96,8%', pending: '7', aging: '2', auto: '84%',
+    chartTitle: 'Distribución del pendiente por causa', chartSub: 'Valor de las excepciones abiertas · suma $18,6 M',
+    kind: 'bars', labels: ['Referencia incompleta', 'Fecha valor', 'Comisión bancaria', 'Duplicidad', 'Otros', 'Ajuste'], vals: [11.9, 3.6, 1.9, 0.6, 0.4, 0.2], legend: [],
+    exceptions: [['Referencia incompleta', 'Control de origen', 'Alta', '11,9 M', 'p-hi'], ['Fecha valor', 'Regla de corte', 'Media', '3,6 M', 'p-mid'], ['Comisión bancaria', 'Catálogo contable', 'Media', '1,9 M', 'p-mid']],
+    rows: [['Referencia incompleta', 'Canal de recaudo', 'Abierto', '3 días', '$11,9 M', 'risk'], ['Fecha valor', 'Extracto', 'En revisión', '2 días', '$3,6 M', 'risk'], ['Comisión bancaria', 'Banco', 'Pendiente', '1 día', '$1,9 M', 'risk'], ['Duplicidad', 'ERP', 'Corregido', 'Hoy', '$0,0 M', 'good']] }
+};
+const W = 600, H = 250;
+const f1 = n => n.toFixed(1).replace('.', ',');
+function plot(d) {
+  if (d.kind === 'bars') {
+    const max = Math.max(...d.vals), x0 = 170, wmax = 330;
+    return `<svg viewBox="0 0 ${W} ${H}">` + d.vals.map((v, i) => {
+      const y = 14 + i * 38, w = v / max * wmax;
+      return `<text class="t-text" x="2" y="${y + 16}">${d.labels[i]}</text><rect class="${i === 0 ? 'f-gold' : 'f-main'}" x="${x0}" y="${y}" width="${Math.max(w, 2)}" height="22"/><text class="t-text" x="${x0 + w + 8}" y="${y + 16}">$${f1(v)}M</text>`;
+    }).join('') + '</svg>';
+  }
+  const p = 30, max = Math.max(...d.vals, d.threshold) * 1.2, x = i => p + i * (W - p - 16) / (d.vals.length - 1), y = v => H - 28 - v / max * (H - 50);
+  const pts = d.vals.map((v, i) => x(i) + ',' + y(v)).join(' ');
+  let g = `<line class="s-ref" stroke="var(--d-gold)" stroke-width="2" x1="${p}" x2="${W - 10}" y1="${y(d.threshold)}" y2="${y(d.threshold)}"/>`;
+  g += d.labels.map((l, i) => `<text class="t-mute" x="${x(i)}" y="${H - 8}" text-anchor="middle">${l}</text>`).join('');
+  if (d.kind === 'area') g += `<polygon fill="var(--d-accent)" opacity=".14" points="${p},${H - 28} ${pts} ${x(d.vals.length - 1)},${H - 28}"/>`;
+  g += `<polyline class="s-main" stroke-width="3.5" points="${pts}"/>`;
+  g += d.vals.map((v, i) => `<circle class="f-main" cx="${x(i)}" cy="${y(v)}" r="4"/><text class="t-text" x="${x(i)}" y="${y(v) - 10}" text-anchor="middle">${f1(v).replace(',0', '')}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+const $ = id => document.getElementById(id);
+function render(k) {
+  const d = D[k];
+  ['answerTitle', 'answerText', 'amount', 'amountLabel', 'matched', 'pending', 'aging', 'auto', 'chartTitle', 'chartSub'].forEach(id => $(id).textContent = d[id]);
+  $('chart').innerHTML = plot(d);
+  $('legend').innerHTML = d.legend.map((t, i) => `<span><i style="background:${i ? 'var(--d-gold)' : 'var(--d-accent)'}"></i>${t}</span>`).join('');
+  $('exceptions').innerHTML = d.exceptions.map(x => `<div class="dm-row"><div><b>${x[0]}</b><small>${x[1]}</small></div><div style="text-align:right"><span class="dm-pill ${x[4]}">${x[2]}</span><small style="margin-top:6px">${x[3]}</small></div></div>`).join('');
+  $('rows').innerHTML = d.rows.map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}</td><td>${x[3]}</td><td class="${x[5]}">${x[4]}</td></tr>`).join('');
+}
+document.querySelectorAll('#views button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#views button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true'); render(b.dataset.k);
+}));
+render('hoy');
+</script>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>

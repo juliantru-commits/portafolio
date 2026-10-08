@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inteligencia de desempeño · Demo con datos ficticios</title>
+<meta name="description" content="Demo interactiva con datos ficticios: qué cambió, qué explica la variación y dónde intervenir.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a6173'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='30' font-weight='700' text-anchor='middle' fill='%23fff'%3EJT%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="demo-bar.css">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+<header class="db"><div class="db-in">
+  <a class="db-back" href="../casos/ecosistema-analitico.html">← Volver al caso</a>
+  <span class="db-tag">Datos ficticios · Demo recreada</span>
+  <button class="db-theme" id="theme-btn" type="button" aria-label="Cambiar entre modo claro y oscuro">Oscuro</button>
+</div></header>
+
+<main class="dm">
+  <p class="dm-eyebrow">Business Intelligence · demo interactiva</p>
+  <h1>Inteligencia de desempeño</h1>
+  <p class="dm-lead">Cada selección responde una pregunta distinta, así que usa la evidencia visual que mejor la contesta.</p>
+  <p class="dm-note">Compañía, categorías y cifras ficticias. Los totales, las variaciones y los aportes de cada palanca son consistentes entre sí.</p>
+
+  <div class="dm-switch" id="tabs" role="group" aria-label="Vista">
+    <button type="button" data-k="total" aria-pressed="true">Visión consolidada</button>
+    <button type="button" data-k="movilidad" aria-pressed="false">Movilidad urbana</button>
+    <button type="button" data-k="proteccion" aria-pressed="false">Protección</button>
+    <button type="button" data-k="accesorios" aria-pressed="false">Accesorios</button>
+  </div>
+
+  <section class="dm-answer" aria-live="polite">
+    <div><p class="dm-eyebrow">Respuesta ejecutiva</p><h2 id="title"></h2><p id="text"></p></div>
+    <div><span class="dm-big" id="amount"></span><span class="dm-big-label" id="label"></span></div>
+  </section>
+
+  <section class="dm-kpis" aria-label="Indicadores">
+    <div class="dm-kpi"><b id="k0"></b><span>Resultado</span></div>
+    <div class="dm-kpi"><b id="k1"></b><span>Variación</span></div>
+    <div class="dm-kpi"><b id="k2"></b><span>Transacciones</span></div>
+    <div class="dm-kpi"><b id="k3"></b><span>Ticket promedio</span></div>
+    <div class="dm-kpi"><b id="k4"></b><span>Devoluciones</span></div>
+  </section>
+
+  <section class="dm-grid">
+    <article class="dm-panel">
+      <h3 id="chartTitle"></h3><small id="chartSub"></small>
+      <div class="dm-chart" id="plot" role="img" aria-label="Gráfico de la vista seleccionada"></div>
+      <div class="dm-caption" id="caption"></div>
+    </article>
+    <aside class="dm-panel">
+      <h3>Palancas de decisión</h3><small id="drvSub"></small>
+      <div id="drivers"></div>
+    </aside>
+  </section>
+</main>
+
+<script>
+/* Cifras en millones de COP. Verificaciones de consistencia:
+   bases: movilidad 44,6 + protección 45,7 + accesorios 28,0 = 118,3 -> total 128,4 (+8,5 %).
+   palancas del total: 6,9 + 5,4 - 2,2 = +10,1 = 128,4 - 118,3. */
+const CUT = [13.2, 14.1, 15.0, 15.8, 16.4, 17.0, 17.5, 19.4];   // suma 128,4
+const CMP = [13.0, 13.6, 14.1, 14.6, 15.0, 15.3, 15.5, 17.2];   // suma 118,3
+const D = {
+  total: { t: 'El resultado crece de forma sostenida frente al comparable.', x: 'La brecha aparece desde el primer corte y se amplía en cada uno. Las nuevas referencias y la disponibilidad son las palancas por proteger.',
+    a: '+8,5%', l: 'Variación del resultado', k: ['$128,4M', '+8,5%', '1.426', '$90.042', '2,4%'],
+    ct: 'Resultado actual frente al comparable', cs: 'Por corte semanal · millones COP',
+    cap: 'La brecha crece en cada corte, hasta +$2,2M en el último.', ds: 'Suman +$10,1M frente al comparable',
+    dr: [['Nuevas referencias', '+$6,9M', 'good'], ['Disponibilidad', '+$5,4M', 'good'], ['Conversión', '−$2,2M', 'risk']] },
+  movilidad: { t: 'Movilidad urbana es el motor más consistente del periodo.', x: 'Recurrencia y disponibilidad explican el crecimiento. El precio aporta apenas el 5 %: no depende de descuentos.',
+    a: '+21,4%', l: 'Variación de la categoría', k: ['$54,2M', '+21,4%', '612', '$88.562', '1,9%'],
+    ct: 'Aporte de cada palanca al crecimiento', cs: 'Suman +$9,6M · millones COP',
+    cap: 'Recurrencia y disponibilidad aportan el 78 % de la variación.', ds: 'Suman +$9,6M frente al comparable',
+    dr: [['Recurrencia', '+$4,3M', 'good'], ['Disponibilidad', '+$3,2M', 'good'], ['Nuevas referencias', '+$1,6M', 'good'], ['Precio', '+$0,5M', 'good']] },
+  proteccion: { t: 'Protección pierde resultado por dos fallas específicas.', x: 'La prioridad es recuperar las tallas disponibles antes de modificar el precio o la inversión.',
+    a: '−4,2%', l: 'Variación de la categoría', k: ['$43,8M', '−4,2%', '431', '$101.624', '3,1%'],
+    ct: 'Puente de resultado', cs: 'Del comparable al resultado actual · millones COP',
+    cap: 'La falta de tallas explica más pérdida que la conversión.', ds: 'Suman −$1,9M frente al comparable',
+    dr: [['Tallas no disponibles', '−$2,6M', 'risk'], ['Menor conversión', '−$1,4M', 'risk'], ['Mix favorable', '+$2,1M', 'good']] },
+  accesorios: { t: 'Accesorios crece con una base diversificada.', x: 'El resultado no depende de una sola referencia. La oportunidad está en aumentar las combinaciones.',
+    a: '+8,6%', l: 'Variación de la categoría', k: ['$30,4M', '+8,6%', '383', '$79.373', '2,2%'],
+    ct: 'Composición del crecimiento', cs: 'Crecimiento incremental de $2,4M · participación de cada palanca',
+    cap: 'Ninguna palanca domina por sí sola, así que hay menor riesgo de concentración.', ds: 'Participación en el crecimiento',
+    dr: [['Soporte móvil', '38%', 'good'], ['Iluminación', '27%', 'good'], ['Combinaciones', '19%', 'good'], ['Otros', '16%', '']] }
+};
+const fmt = n => n.toFixed(1).replace('.', ',');
+const W = 600, H = 250;
+
+function lineChart() {
+  const lo = 10, hi = 20, p = 34, x = i => p + i * (W - p - 14) / (CUT.length - 1), y = v => H - 28 - (v - lo) / (hi - lo) * (H - 56);
+  const path = a => a.map((v, i) => (i ? 'L' : 'M') + x(i) + ' ' + y(v)).join(' ');
+  let g = '';
+  [10, 15, 20].forEach(v => { g += `<line class="s-grid" x1="${p}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}"/><text class="t-mute" x="2" y="${y(v) + 4}">${v}</text>`; });
+  CUT.forEach((_, i) => { g += `<text class="t-mute" x="${x(i)}" y="${H - 6}" text-anchor="middle">C${i + 1}</text>`; });
+  const last = CUT.length - 1;
+  return `<svg viewBox="0 0 ${W} ${H}">${g}<path class="s-ref" stroke-width="2" d="${path(CMP)}"/><path class="s-main" stroke-width="3.5" d="${path(CUT)}"/>
+    <circle class="s-mark" cx="${x(last)}" cy="${y(CUT[last])}" r="5"/><text class="t-text" x="${x(last) - 8}" y="${y(CUT[last]) - 12}" text-anchor="end">${fmt(CUT[last])}</text>
+    <text class="t-mute" x="${x(last) - 8}" y="${y(CMP[last]) + 18}" text-anchor="end">${fmt(CMP[last])} comparable</text></svg>`;
+}
+function hBars(items) {
+  const max = Math.max(...items.map(i => i[1])), x0 = 150, wmax = 330;
+  return `<svg viewBox="0 0 ${W} ${H}">` + items.map((it, i) => {
+    const y = 30 + i * 52, w = it[1] / max * wmax;
+    return `<text class="t-text" x="2" y="${y + 15}">${it[0]}</text><rect class="${it[2]}" x="${x0}" y="${y}" width="${w}" height="24"/><text class="t-text" x="${x0 + w + 8}" y="${y + 16}">$${fmt(it[1])}M</text>`;
+  }).join('') + '</svg>';
+}
+function waterfall() {
+  // Eje truncado en $40M para que los pasos se aprecien; se rotula en el gráfico.
+  const lo = 40, hi = 48, y = v => H - 40 - (v - lo) / (hi - lo) * (H - 80);
+  const steps = [['Base', 45.7, 'f-main', null], ['Tallas', -2.6, 'f-err', 1], ['Conversión', -1.4, 'f-err', 1], ['Mix', 2.1, 'f-ok', 1], ['Actual', 43.8, 'f-main', null]];
+  let run = 45.7, out = `<line class="s-axis" x1="10" x2="${W - 10}" y1="${y(lo)}" y2="${y(lo)}"/><text class="t-mute" x="10" y="14">Eje desde $40M</text>`;
+  steps.forEach((s, i) => {
+    const bx = 30 + i * 112; let top, bot, label;
+    if (s[3] === null) { top = y(s[1]); bot = y(lo); label = fmt(s[1]); }
+    else { const a = run, b = run + s[1]; top = y(Math.max(a, b)); bot = y(Math.min(a, b)); run = b; label = (s[1] > 0 ? '+' : '−') + fmt(Math.abs(s[1])); }
+    out += `<rect class="${s[2]}" x="${bx}" y="${top}" width="70" height="${Math.max(bot - top, 2)}"/><text class="t-text" x="${bx + 35}" y="${top - 8}" text-anchor="middle">${label}</text><text class="t-mute" x="${bx + 35}" y="${H - 16}" text-anchor="middle">${s[0]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}">${out}</svg>`;
+}
+function stacked() {
+  const parts = [['Soporte móvil', 38, 'f-main'], ['Iluminación', 27, 'f-gold'], ['Combinaciones', 19, 'f-ok'], ['Otros', 16, 'f-mute']];
+  let x = 10, out = '<text class="t-text" x="10" y="40">Crecimiento incremental: $2,4M</text>';
+  parts.forEach(p => { const w = p[1] / 100 * (W - 20); out += `<rect class="${p[2]}" x="${x}" y="70" width="${w}" height="56"/><text class="t-text" fill="#fff" style="fill:var(--d-accent-ink)" x="${x + w / 2}" y="104" text-anchor="middle">${p[1]}%</text>`; x += w; });
+  let lx = 10;
+  parts.forEach((p, i) => { out += `<rect class="${p[2]}" x="${10 + (i % 2) * 280}" y="${158 + Math.floor(i / 2) * 30}" width="12" height="12"/><text class="t-text" x="${28 + (i % 2) * 280}" y="${169 + Math.floor(i / 2) * 30}">${p[0]}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}">${out}</svg>`;
+}
+function graph(k) {
+  if (k === 'total') return lineChart();
+  if (k === 'movilidad') return hBars([['Recurrencia', 4.3, 'f-main'], ['Disponibilidad', 3.2, 'f-gold'], ['Nuevas referencias', 1.6, 'f-ok'], ['Precio', 0.5, 'f-mute']]);
+  if (k === 'proteccion') return waterfall();
+  return stacked();
+}
+const $ = id => document.getElementById(id);
+function render(k) {
+  const d = D[k];
+  $('title').textContent = d.t; $('text').textContent = d.x; $('amount').textContent = d.a; $('label').textContent = d.l;
+  d.k.forEach((v, i) => $('k' + i).textContent = v);
+  $('chartTitle').textContent = d.ct; $('chartSub').textContent = d.cs; $('caption').textContent = d.cap; $('drvSub').textContent = d.ds;
+  $('plot').innerHTML = graph(k);
+  $('drivers').innerHTML = d.dr.map(x => `<div class="dm-row"><span>${x[0]}</span><b class="${x[2]}">${x[1]}</b></div>`).join('');
+  $('amount').className = 'dm-big ' + (d.a[0] === '−' ? 'risk' : '');
+}
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true'); render(b.dataset.k);
+}));
+render('total');
+</script>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>
