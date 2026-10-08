@@ -226,7 +226,6 @@ h3 { font-size: 22px; line-height: 1.2; }
 /* ---------- Qué resuelvo ---------- */
 .problems { border-top: 1px solid var(--line); }
 .problem { display: grid; grid-template-columns: 1fr 1.2fr; gap: var(--sp-5); padding: var(--sp-4) 0; border-bottom: 1px solid var(--line); }
-.problem h3 { font-size: 21px; }
 .problem p { margin: 0; color: var(--muted); }
 
 /* ---------- Casos ---------- */
@@ -244,13 +243,13 @@ h3 { font-size: 22px; line-height: 1.2; }
 .case-row:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .case-row .num { font-family: var(--font-display); font-size: 28px; color: var(--gold); }
 .case-row h3 { margin-bottom: var(--sp-2); }
-.case-row.lead-case h3 { font-size: 28px; }
 .case-row p { margin: 0; color: var(--muted); max-width: 60ch; }
 .case-meta { font-size: 14px; color: var(--muted); }
 .case-meta strong { display: block; color: var(--text); font-weight: 600; }
 .case-meta .go { display: block; margin-top: var(--sp-3); color: var(--accent); font-weight: 600; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--sp-3); }
 .chip { font-size: 12px; font-weight: 600; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+.chip-main { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
 /* ---------- Método ---------- */
 .method-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: var(--sp-6); }

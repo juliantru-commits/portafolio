@@ -18,7 +18,7 @@ main.dm { max-width: 1120px; margin: 0 auto; padding: 40px 24px 72px; }
   border: 1px solid var(--d-line); border-radius: 4px; min-height: 44px; padding: 0 16px; cursor: pointer;
 }
 .dm-switch button:hover { color: var(--d-text); border-color: var(--d-muted); }
-.dm-switch button[aria-pressed="true"] { color: var(--d-accent); border-color: var(--d-accent); background: color-mix(in srgb, var(--d-accent) 8%, transparent); font-weight: 600; }
+.dm-switch button[aria-pressed="true"] { color: var(--d-accent); border-color: var(--d-accent); background: color-mix(in srgb, var(--d-accent) 8%, transparent); }
 
 .dm-answer { display: grid; grid-template-columns: 1.3fr .7fr; gap: 24px; padding: 24px; background: var(--d-surface); border: 1px solid var(--d-line); }
 .dm-answer h2 { font-size: 26px; line-height: 1.2; margin: 6px 0 8px; }
