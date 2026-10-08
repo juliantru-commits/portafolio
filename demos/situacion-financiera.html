@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Un modelo, un tablero por cliente · Ilustración con datos ficticios</title>
+<meta name="description" content="Ilustración con datos ficticios de cómo un mismo modelo de datos atiende a varios clientes con cinco informes financieros para cada uno.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a6173'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='30' font-weight='700' text-anchor='middle' fill='%23fff'%3EJT%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="demo-bar.css">
+<link rel="stylesheet" href="demo.css">
+<style>
+  .sf-ctrl { display: flex; flex-wrap: wrap; gap: 16px; margin: 24px 0 8px; }
+  .sf-ctrl label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--d-muted); margin-bottom: 6px; }
+  .sf-ctrl select { font: inherit; font-size: 16px; color: var(--d-text); background: var(--d-surface); border: 1px solid var(--d-line); border-radius: 4px; min-height: 44px; padding: 0 12px; min-width: 240px; }
+  .l1 { stroke: var(--d-accent); fill: none; } .l2 { stroke: var(--d-gold); fill: none; } .l3 { stroke: var(--d-ok); fill: none; }
+  .c1 { fill: var(--d-accent); } .c2 { fill: var(--d-gold); } .c3 { fill: var(--d-ok); } .c4 { fill: var(--d-err); }
+  .sf-delta { display: block; margin-top: 4px; font-size: 13px; color: var(--d-muted); }
+  .sf-table td.sub { color: var(--d-muted); padding-left: 22px; }
+  .sf-table tr.tot td { font-weight: 700; border-top: 1px solid var(--d-muted); }
+  .sf-table tr.grp td { font-weight: 700; color: var(--d-accent); padding-top: 14px; border-top: 0; }
+  .sf-table td { white-space: normal; }
+  .sf-check { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--d-ok); color: var(--d-ok); font-size: 14px; font-weight: 600; }
+  .sf-intro { margin: 8px 0 16px; padding: 12px 14px; border-left: 3px solid var(--d-gold); background: var(--d-surface2); font-size: 15px; }
+  .sf-state { font-size: 12px; font-weight: 600; padding: 2px 8px; border: 1px solid; border-radius: 999px; white-space: nowrap; }
+  .st-v { color: var(--d-err); border-color: var(--d-err); } .st-p { color: var(--d-warn); border-color: var(--d-warn); } .st-f { color: var(--d-muted); border-color: var(--d-line); }
+</style>
+</head>
+<body>
+<header class="db"><div class="db-in">
+  <a class="db-back" href="../casos/modelo-financiero-replicable.html">← Volver al caso</a>
+  <span class="db-tag">Datos ficticios · Ilustración conceptual</span>
+  <button class="db-theme" id="theme-btn" type="button" aria-label="Cambiar entre modo claro y oscuro">Oscuro</button>
+</div></header>
+
+<main class="dm">
+  <p class="dm-eyebrow">Business Intelligence y finanzas · ilustración interactiva</p>
+  <h1>Un modelo, un tablero por cliente</h1>
+  <p class="dm-lead">Cambia de cliente y de mes: la estructura y los cinco informes son los mismos para todos; solo cambia la información de cada uno.</p>
+  <p class="dm-note">Firma, clientes, cuentas, fechas y cifras ficticios. Ilustra la idea de un modelo replicable con los cinco informes del tablero; el contenido de cada informe es ilustrativo y no reproduce los tableros reales. Cifras en millones de pesos.</p>
+
+  <div class="sf-ctrl">
+    <div><label for="cli">Cliente</label><select id="cli"></select></div>
+    <div><label for="mes">Mes de corte</label><select id="mes"></select></div>
+  </div>
+  <div class="dm-switch" id="tabs" role="group" aria-label="Informe">
+    <button type="button" data-k="sit" aria-pressed="true">Estado de situación financiera</button>
+    <button type="button" data-k="eje" aria-pressed="false">Ejecución financiera</button>
+    <button type="button" data-k="ven" aria-pressed="false">Desempeño de ventas</button>
+    <button type="button" data-k="kpi" aria-pressed="false">KPI financieros</button>
+    <button type="button" data-k="cal" aria-pressed="false">Calendario tributario</button>
+  </div>
+  <p class="sf-intro" id="intro" aria-live="polite"></p>
+  <section class="dm-kpis" id="kpis" aria-label="Indicadores"></section>
+  <section class="dm-grid">
+    <article class="dm-panel">
+      <h3 id="chartT"></h3><small id="chartS"></small>
+      <div class="dm-chart" id="plot" role="img" aria-label="Gráfico del informe seleccionado"></div>
+      <div class="dm-legend" id="legend"></div>
+    </article>
+    <aside class="dm-panel">
+      <h3 id="tblT"></h3><small id="tblS"></small>
+      <div class="dm-table-wrap"><table class="dm-table sf-table"><tbody id="rows"></tbody></table></div>
+      <div class="sf-check" id="check" hidden></div>
+    </aside>
+  </section>
+</main>
+
+<script>
+/* Datos ficticios con semilla fija. Todos los clientes usan EL MISMO modelo de cuentas.
+   - Patrimonio = activos - pasivos, así la ecuación contable cuadra por construcción.
+   - Utilidad = ingresos - costos - gastos. Ventas = ingresos. Todos los informes salen de los mismos datos. */
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep'];
+const MESES12 = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const CLIENTES = [
+  { n: 'Ferretería El Roble', s: 310, w: [.10, .24, .26, .24, .15, .08, .10, .09], cm: .68, gm: .20, lin: ['Herramientas', 'Materiales', 'Pinturas'], seed: 11 },
+  { n: 'Clínica Dental Sonrisa', s: 140, w: [.18, .20, .04, .40, .12, .08, .14, .10], cm: .30, gm: .48, lin: ['Consultas', 'Ortodoncia', 'Estética'], seed: 23 },
+  { n: 'Transportes Andes', s: 520, w: [.08, .22, .03, .46, .13, .09, .17, .10], cm: .62, gm: .27, lin: ['Carga nacional', 'Carga urbana', 'Alquiler'], seed: 37 },
+  { n: 'Panadería La Espiga', s: 95, w: [.14, .08, .20, .30, .14, .07, .10, .12], cm: .55, gm: .31, lin: ['Pan', 'Pastelería', 'Cafetería'], seed: 41 },
+  { n: 'Constructora Horizonte', s: 840, w: [.07, .26, .22, .20, .20, .12, .13, .12], cm: .72, gm: .17, lin: ['Obra civil', 'Acabados', 'Interventoría'], seed: 59 },
+  { n: 'Agencia Brújula', s: 70, w: [.22, .30, .00, .12, .12, .06, .03, .08], cm: .25, gm: .55, lin: ['Campañas', 'Contenido', 'Medios'], seed: 67 },
+];
+function rnd(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const r1 = x => Math.round(x * 10) / 10;
+CLIENTES.forEach(c => {
+  const R = rnd(c.seed);
+  c.m = MESES.map((_, i) => {
+    const g = 1 + i * 0.012, v = k => r1(c.s * c.w[k] * g * (1 + (R() - .5) * 0.16));
+    const o = { efectivo: v(0), cxc: v(1), inv: v(2), ppe: r1(c.s * c.w[3] * (1 - i * 0.004)), prov: v(4), ocp: v(5), olp: r1(c.s * c.w[6] * (1 - i * 0.01)), capital: r1(c.s * c.w[7]) };
+    o.ac = r1(o.efectivo + o.cxc + o.inv); o.ta = r1(o.ac + o.ppe);
+    o.pc = r1(o.prov + o.ocp); o.tp = r1(o.pc + o.olp);
+    o.pat = r1(o.ta - o.tp); o.res = r1(o.pat - o.capital);
+    // estado de resultados del mes
+    o.ing = r1(c.s * 0.21 * g * (1 + (R() - .5) * 0.18));
+    o.cos = r1(o.ing * c.cm * (1 + (R() - .5) * 0.06)); o.gas = r1(o.ing * c.gm * (1 + (R() - .5) * 0.06));
+    o.uti = r1(o.ing - o.cos - o.gas);
+    // ventas por línea (suman exactamente los ingresos)
+    const a = r1(o.ing * 0.5), b = r1(o.ing * 0.3); o.lin = [a, b, r1(o.ing - a - b)];
+    return o;
+  });
+});
+const fm = n => n.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const pct = n => (n * 100).toFixed(1).replace('.', ',') + '%';
+const $ = id => document.getElementById(id);
+const delta = (a, b) => { const d = a / b - 1; return (d >= 0 ? '▲ ' : '▼ ') + Math.abs(d * 100).toFixed(1).replace('.', ',') + '% frente al mes anterior'; };
+const kp = (v, l, s) => `<div class="dm-kpi"><b>${v}</b><span>${l}</span>${s ? `<span class="sf-delta">${s}</span>` : ''}</div>`;
+const W = 600, H = 250;
+function lines(c, k, series) {
+  const p = 40, max = Math.max(...series.flatMap(s => c.m.map(m => m[s[0]]))) * 1.1, x = i => p + i * (W - p - 14) / 8, y = v => H - 28 - v / max * (H - 52);
+  let g = '';
+  [0, .5, 1].forEach(f => { const v = max / 1.1 * f; g += `<line class="s-grid" x1="${p}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}"/><text class="t-mute" x="2" y="${y(v) + 4}">${Math.round(v)}</text>`; });
+  MESES.forEach((m, i) => { g += `<text class="t-mute" x="${x(i)}" y="${H - 8}" text-anchor="middle">${m}</text>`; });
+  g += `<line class="s-axis" x1="${x(k)}" x2="${x(k)}" y1="14" y2="${H - 28}" stroke-dasharray="3 4"/>`;
+  series.forEach(([key, cl]) => { g += `<path class="l${cl}" stroke-width="3" d="${c.m.map((m, i) => (i ? 'L' : 'M') + x(i) + ' ' + y(m[key])).join(' ')}"/><circle class="c${cl}" cx="${x(k)}" cy="${y(c.m[k][key])}" r="5"/>`; });
+  return `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+function bars(c, k, key, cls) {
+  const p = 40, max = Math.max(...c.m.map(m => m[key])) * 1.12, bw = 36, x = i => p + 8 + i * (W - p - 20) / 9, y = v => H - 28 - v / max * (H - 52);
+  let g = [0, .5, 1].map(f => { const v = max / 1.12 * f; return `<line class="s-grid" x1="${p}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}"/><text class="t-mute" x="2" y="${y(v) + 4}">${Math.round(v)}</text>`; }).join('');
+  c.m.forEach((m, i) => { g += `<rect class="${i === k ? 'c1' : 'f-mute'}" x="${x(i)}" y="${y(m[key])}" width="${bw}" height="${H - 28 - y(m[key])}"/><text class="t-mute" x="${x(i) + bw / 2}" y="${H - 8}" text-anchor="middle">${MESES[i]}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+const row = (t, v, cls, sub, txt) => `<tr class="${cls || ''}"><td class="${sub ? 'sub' : ''}">${t}</td><td style="text-align:right">${v === '' ? '' : (txt ? v : fm(v))}</td></tr>`;
+const LEG = { sit: [['accent', 'Activos'], ['gold', 'Pasivos'], ['ok', 'Patrimonio']], eje: [['accent', 'Ingresos'], ['gold', 'Costos y gastos'], ['ok', 'Utilidad']] };
+const legend = a => a.map(([c, t]) => `<span><i style="background:var(--d-${c})"></i>${t}</span>`).join('');
+
+const V = {
+  sit(c, k, m, p) {
+    return { intro: 'Qué tiene, qué debe y cuánto vale la empresa a la fecha de corte.',
+      kpis: kp(fm(m.ta), 'Activos totales', k ? delta(m.ta, p.ta) : '') + kp(fm(m.tp), 'Pasivos totales', k ? delta(m.tp, p.tp) : '') + kp(fm(m.pat), 'Patrimonio', k ? delta(m.pat, p.pat) : '') + kp(fm(m.ac - m.pc), 'Capital de trabajo', 'Activo corriente menos pasivo corriente'),
+      ct: 'Activos, pasivos y patrimonio', cs: 'Evolución mensual', plot: lines(c, k, [['ta', 1], ['tp', 2], ['pat', 3]]), legend: legend(LEG.sit), tt: 'Estado de situación financiera', ts: c.n + ' · ' + MESES[k] + ' 2026',
+      rows: row('Activo corriente', '', 'grp') + row('Efectivo', m.efectivo, '', 1) + row('Cuentas por cobrar', m.cxc, '', 1) + row('Inventarios', m.inv, '', 1) + row('Total activo corriente', m.ac, 'tot') +
+        row('Activo no corriente', '', 'grp') + row('Propiedad, planta y equipo', m.ppe, '', 1) + row('TOTAL ACTIVOS', m.ta, 'tot') +
+        row('Pasivo corriente', '', 'grp') + row('Proveedores', m.prov, '', 1) + row('Obligaciones financieras de corto plazo', m.ocp, '', 1) + row('Total pasivo corriente', m.pc, 'tot') +
+        row('Pasivo no corriente', '', 'grp') + row('Obligaciones financieras de largo plazo', m.olp, '', 1) + row('TOTAL PASIVOS', m.tp, 'tot') +
+        row('Patrimonio', '', 'grp') + row('Capital social', m.capital, '', 1) + row('Resultados acumulados', m.res, '', 1) + row('TOTAL PATRIMONIO', m.pat, 'tot'),
+      check: (Math.abs(m.ta - (m.tp + m.pat)) < 0.05 ? '✓ ' : '✗ ') + 'Verificación: activos (' + fm(m.ta) + ') = pasivos + patrimonio (' + fm(r1(m.tp + m.pat)) + ')' };
+  },
+  eje(c, k, m, p) {
+    return { intro: 'Cuánto entró, cuánto costó operar y cuánto quedó de utilidad en el mes.',
+      kpis: kp(fm(m.ing), 'Ingresos del mes', k ? delta(m.ing, p.ing) : '') + kp(fm(m.cos), 'Costos') + kp(fm(m.gas), 'Gastos') + kp(fm(m.uti), 'Utilidad del mes', 'Margen neto: ' + pct(m.uti / m.ing)),
+      ct: 'Ingresos, costos y gastos, y utilidad', cs: 'Evolución mensual', plot: lines(c, k, [['ing', 1], ['cgm', 2], ['uti', 3]]), legend: legend(LEG.eje), tt: 'Resultado del mes', ts: c.n + ' · ' + MESES[k] + ' 2026',
+      rows: row('Ingresos', m.ing, 'tot') + row('Costos', m.cos, '', 1) + row('Utilidad bruta', r1(m.ing - m.cos), 'tot') + row('Gastos', m.gas, '', 1) + row('UTILIDAD DEL MES', m.uti, 'tot'),
+      check: (Math.abs(m.ing - m.cos - m.gas - m.uti) < 0.15 ? '✓ ' : '✗ ') + 'Verificación: ingresos − costos − gastos = utilidad' };
+  },
+  ven(c, k, m, p) {
+    const acum = r1(c.m.slice(0, k + 1).reduce((a, x) => a + x.ing, 0));
+    return { intro: 'Cuánto se vende, cómo evoluciona y qué línea lo explica.',
+      kpis: kp(fm(m.ing), 'Ventas del mes', k ? delta(m.ing, p.ing) : '') + kp(fm(acum), 'Ventas acumuladas del año') + kp(fm(r1(acum / (k + 1))), 'Promedio mensual') + kp(c.lin[m.lin.indexOf(Math.max(...m.lin))], 'Línea que más vende', pct(Math.max(...m.lin) / m.ing) + ' de las ventas'),
+      ct: 'Ventas por mes', cs: 'El mes de corte está resaltado · millones de pesos', plot: bars(c, k, 'ing'), legend: '', tt: 'Ventas por línea', ts: c.n + ' · ' + MESES[k] + ' 2026',
+      rows: m.lin.map((v, i) => row(c.lin[i], fm(v) + ' · ' + pct(v / m.ing), '', 1, 1)).join('') + row('TOTAL VENTAS', m.ing, 'tot'),
+      check: (Math.abs(sumArr(m.lin) - m.ing) < 0.15 ? '✓ ' : '✗ ') + 'Verificación: las líneas suman las ventas del mes' };
+  },
+  kpi(c, k, m, p) {
+    const ra = x => x.ac / x.pc, mb = x => (x.ing - x.cos) / x.ing, mn = x => x.uti / x.ing, en = x => x.tp / x.ta, pa = x => (x.ac - x.inv) / x.pc;
+    const d = (f) => k ? (f(m) >= f(p) ? '▲' : '▼') + ' frente al mes anterior' : '';
+    return { intro: 'Cinco números para leer la salud financiera de un vistazo.',
+      kpis: kp(ra(m).toFixed(2).replace('.', ','), 'Razón corriente', d(ra)) + kp(pct(en(m)), 'Endeudamiento', d(en)) + kp(pct(mb(m)), 'Margen bruto', d(mb)) + kp(pct(mn(m)), 'Margen neto', d(mn)),
+      ct: 'Márgenes por mes', cs: 'Margen bruto y margen neto', plot: marginChart(c, k), legend: legend([['accent', 'Margen bruto'], ['ok', 'Margen neto']]), tt: 'Cómo se calcula cada indicador', ts: c.n + ' · ' + MESES[k] + ' 2026',
+      rows: row('Razón corriente = activo corriente / pasivo corriente', ra(m).toFixed(2).replace('.', ','), '', 1, 1) + row('Prueba ácida = (activo corriente − inventarios) / pasivo corriente', pa(m).toFixed(2).replace('.', ','), '', 1, 1) +
+        row('Endeudamiento = pasivos / activos', pct(en(m)), '', 1, 1) + row('Margen bruto = utilidad bruta / ingresos', pct(mb(m)), '', 1, 1) + row('Margen neto = utilidad / ingresos', pct(mn(m)), '', 1, 1), check: '' };
+  },
+  cal(c, k, m) {
+    const corte = new Date(2026, k + 1, 0), it = [];
+    for (let i = 0; i < 12; i++) it.push({ o: 'Retención en la fuente de ' + MESES12[i], f: new Date(2026, i + 1, 12) });
+    for (let i = 1; i < 12; i += 2) it.push({ o: 'IVA de ' + MESES12[i - 1] + ' y ' + MESES12[i], f: new Date(2026, i + 1, 14) });
+    it.push({ o: 'Impuesto de industria y comercio (anual)', f: new Date(2026, 2, 31) });
+    const dias = x => Math.round((x.f - corte) / 864e5);
+    const lista = it.filter(x => dias(x) >= -30 && dias(x) <= 75).sort((a, b) => a.f - b.f);
+    const est = x => dias(x) < 0 ? ['Pasada', 'st-v'] : (dias(x) <= 30 ? ['Próxima', 'st-p'] : ['Futura', 'st-f']);
+    const ct = n => lista.filter(x => est(x)[0] === n).length;
+    return { intro: 'Qué obligaciones tributarias vencen y cuáles se acercan. Las fechas de la ilustración son ficticias: las reales dependen de cada contribuyente.',
+      kpis: kp(ct('Pasada'), 'Fechas pasadas (últimos 30 días)') + kp(ct('Próxima'), 'Próximas (30 días)') + kp(ct('Futura'), 'Futuras (hasta 75 días)') + kp(corte.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }), 'Fecha de corte'),
+      ct: 'Obligaciones por vencimiento', cs: 'Días desde la fecha de corte', plot: calChart(lista, dias, est), legend: '', tt: 'Calendario', ts: c.n + ' · corte: ' + MESES[k] + ' 2026',
+      rows: lista.map(x => `<tr><td>${x.o}<br><small style="color:var(--d-muted)">${x.f.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</small></td><td style="text-align:right"><span class="sf-state ${est(x)[1]}">${est(x)[0]}</span></td></tr>`).join(''), check: '' };
+  },
+};
+const sumArr = a => a.reduce((x, y) => x + y, 0);
+function marginChart(c, k) {
+  const p = 40, mb = c.m.map(m => (m.ing - m.cos) / m.ing * 100), mn = c.m.map(m => m.uti / m.ing * 100), max = Math.max(...mb) * 1.1, x = i => p + i * (W - p - 14) / 8, y = v => H - 28 - v / max * (H - 52);
+  let g = [0, .5, 1].map(f => { const v = max / 1.1 * f; return `<line class="s-grid" x1="${p}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}"/><text class="t-mute" x="2" y="${y(v) + 4}">${Math.round(v)}%</text>`; }).join('');
+  MESES.forEach((m, i) => { g += `<text class="t-mute" x="${x(i)}" y="${H - 8}" text-anchor="middle">${m}</text>`; });
+  g += `<line class="s-axis" x1="${x(k)}" x2="${x(k)}" y1="14" y2="${H - 28}" stroke-dasharray="3 4"/>`;
+  [[mb, 1], [mn, 3]].forEach(([s, cl]) => { g += `<path class="l${cl}" stroke-width="3" d="${s.map((v, i) => (i ? 'L' : 'M') + x(i) + ' ' + y(v)).join(' ')}"/><circle class="c${cl}" cx="${x(k)}" cy="${y(s[k])}" r="5"/>`; });
+  return `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+function calChart(lista, dias, est) {
+  if (!lista.length) return '<svg viewBox="0 0 600 250"><text class="t-text" x="20" y="40">Sin obligaciones en la ventana.</text></svg>';
+  const n = lista.length, rh = Math.min(30, 220 / n), cl = { Pasada: 'c4', Próxima: 'c2', Futura: 'f-mute' };
+  return `<svg viewBox="0 0 600 250">` + lista.slice(0, 8).map((x, i) => { const d = dias(x), e = est(x)[0], w = Math.max(Math.abs(d) / 75 * 300, 4); return `<text class="t-text" x="2" y="${20 + i * 30 + 14}">${x.o.length > 30 ? x.o.slice(0, 29) + '…' : x.o}</text><rect class="${cl[e]}" x="${d < 0 ? 400 - w : 400}" y="${20 + i * 30}" width="${w}" height="18"/><text class="t-mute" x="${d < 0 ? 400 - w - 6 : 406 + w}" y="${20 + i * 30 + 14}" text-anchor="${d < 0 ? 'end' : 'start'}">${d} d</text>`; }).join('') + `<line class="s-axis" x1="400" x2="400" y1="10" y2="245"/></svg>`;
+}
+let tab = 'sit';
+function render() {
+  const c = CLIENTES[+$('cli').value], k = +$('mes').value, m = c.m[k], p = c.m[Math.max(k - 1, 0)];
+  if (tab === 'eje') m.cgm = r1(m.cos + m.gas);
+  c.m.forEach(x => { x.cgm = r1(x.cos + x.gas); });
+  const v = V[tab](c, k, m, p);
+  $('intro').textContent = v.intro; $('kpis').innerHTML = v.kpis; $('chartT').textContent = v.ct; $('chartS').textContent = c.n + ' · ' + v.cs; $('plot').innerHTML = v.plot; $('legend').innerHTML = v.legend;
+  $('tblT').textContent = v.tt; $('tblS').textContent = v.ts; $('rows').innerHTML = v.rows;
+  const ck = $('check'); ck.hidden = !v.check; ck.textContent = v.check || '';
+}
+$('cli').innerHTML = CLIENTES.map((c, i) => `<option value="${i}">${c.n}</option>`).join('');
+$('mes').innerHTML = MESES.map((m, i) => `<option value="${i}">${m} 2026</option>`).join(''); $('mes').value = 8;
+$('cli').addEventListener('change', render); $('mes').addEventListener('change', render);
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); tab = b.dataset.k; render();
+}));
+render();
+</script>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>
