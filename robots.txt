@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://juliantru-commits.github.io/portafolio/sitemap.xml
